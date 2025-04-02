@@ -6,139 +6,148 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY')
-conn = None
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'crudazure')
 
-# Configuración de conexión a Azure SQL
+# Configuración mejorada de conexión a Azure SQL
 def get_db_connection():
-    server = os.getenv('sql-server-azure-prueba-nube.database.windows.net')
-    database = os.getenv('sql-prueba-crud')
-    username = os.getenv('adminpruebas')
-    password = os.getenv('Helado123')
-    driver = '{ODBC Driver 17 for SQL Server}'
-    
-    conn = pyodbc.connect(
-        f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-    )
-    return conn
+    try:
+        server = os.getenv('AZURE_SQL_SERVER', 'sql-server-azure-prueba-nube.database.windows.net')
+        database = os.getenv('AZURE_SQL_DATABASE', 'sql-prueba-crud')
+        username = os.getenv('AZURE_SQL_USERNAME', 'adminpruebas')
+        password = os.getenv('AZURE_SQL_PASSWORD', 'Helado123')
+        
+        conn = pyodbc.connect(
+            f'DRIVER={{ODBC Driver 17 for SQL Server}};'
+            f'SERVER={server};'
+            f'DATABASE={database};'
+            f'UID={username};'
+            f'PWD={password};'
+            'Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'
+        )
+        return conn
+    except pyodbc.Error as e:
+        print(f"Error de conexión a la base de datos: {str(e)}")
+        return None
 
-# Crear tabla si no existe
+# Función init_db corregida
 def init_db():
+    conn = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='datos_cientificos' AND xtype='U')
-        CREATE TABLE datos_cientificos (
-            id INT IDENTITY(1,1) PRIMARY KEY,
-            nombre NVARCHAR(100) NOT NULL,
-            descripcion NVARCHAR(255),
-            valor FLOAT NOT NULL,
-            unidad NVARCHAR(50),
-            fecha_registro DATETIME DEFAULT GETDATE()
-        )
-        ''')
-        conn.commit()
+        if conn:
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='datos_cientificos' AND xtype='U')
+                CREATE TABLE datos_cientificos (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    nombre NVARCHAR(100) NOT NULL,
+                    descripcion NVARCHAR(255),
+                    valor FLOAT NOT NULL,
+                    unidad NVARCHAR(50),
+                    fecha_registro DATETIME DEFAULT GETDATE()
+                )
+                ''')
+                conn.commit()
     except Exception as e:
-        print(f"Error al inicializar DB: {e}")
+        print(f"Error al inicializar DB: {str(e)}")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
-# Rutas de la aplicación
+# Rutas con manejo seguro de conexiones
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM datos_cientificos ORDER BY fecha_registro DESC')
-    datos = cursor.fetchall()
-    conn.close()
-    return render_template('index.html', datos=datos)
+    try:
+        with get_db_connection() as conn:
+            if conn:
+                with conn.cursor() as cursor:
+                    cursor.execute('SELECT * FROM datos_cientificos ORDER BY fecha_registro DESC')
+                    datos = cursor.fetchall()
+                    return render_template('index.html', datos=datos)
+        return render_template('index.html', datos=[])
+    except Exception as e:
+        flash(f'Error al cargar datos: {str(e)}', 'danger')
+        return render_template('index.html', datos=[])
 
 @app.route('/agregar', methods=['GET', 'POST'])
 def agregar():
     if request.method == 'POST':
-        nombre = request.form['nombre']
-        descripcion = request.form['descripcion']
-        valor = float(request.form['valor'])
-        unidad = request.form['unidad']
-        
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                'INSERT INTO datos_cientificos (nombre, descripcion, valor, unidad) VALUES (?, ?, ?, ?)',
-                (nombre, descripcion, valor, unidad)
-            )
-            conn.commit()
-            flash('Registro agregado correctamente', 'success')
+            with get_db_connection() as conn:
+                if conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            'INSERT INTO datos_cientificos (nombre, descripcion, valor, unidad) VALUES (?, ?, ?, ?)',
+                            (
+                                request.form['nombre'],
+                                request.form['descripcion'],
+                                float(request.form['valor']),
+                                request.form['unidad']
+                            )
+                        )
+                        conn.commit()
+                        flash('Registro agregado correctamente', 'success')
         except Exception as e:
             flash(f'Error al agregar registro: {str(e)}', 'danger')
-        finally:
-            conn.close()
         return redirect(url_for('index'))
     
     return render_template('agregar.html')
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    if request.method == 'POST':
-        nombre = request.form['nombre']
-        descripcion = request.form['descripcion']
-        valor = float(request.form['valor'])
-        unidad = request.form['unidad']
-        
-        try:
-            cursor.execute(
-                'UPDATE datos_cientificos SET nombre=?, descripcion=?, valor=?, unidad=? WHERE id=?',
-                (nombre, descripcion, valor, unidad, id)
-            )
-            conn.commit()
-            flash('Registro actualizado correctamente', 'success')
-        except Exception as e:
-            flash(f'Error al actualizar registro: {str(e)}', 'danger')
-        finally:
-            conn.close()
+    try:
+        with get_db_connection() as conn:
+            if conn:
+                with conn.cursor() as cursor:
+                    if request.method == 'POST':
+                        cursor.execute(
+                            'UPDATE datos_cientificos SET nombre=?, descripcion=?, valor=?, unidad=? WHERE id=?',
+                            (
+                                request.form['nombre'],
+                                request.form['descripcion'],
+                                float(request.form['valor']),
+                                request.form['unidad'],
+                                id
+                            )
+                        )
+                        conn.commit()
+                        flash('Registro actualizado correctamente', 'success')
+                        return redirect(url_for('index'))
+                    
+                    cursor.execute('SELECT * FROM datos_cientificos WHERE id = ?', (id,))
+                    dato = cursor.fetchone()
+                    if not dato:
+                        flash('Registro no encontrado', 'danger')
+                        return redirect(url_for('index'))
+                    
+                    return render_template('editar.html', dato=dato)
+    except Exception as e:
+        flash(f'Error al procesar solicitud: {str(e)}', 'danger')
         return redirect(url_for('index'))
-    
-    cursor.execute('SELECT * FROM datos_cientificos WHERE id = ?', (id,))
-    dato = cursor.fetchone()
-    conn.close()
-    
-    if dato is None:
-        flash('Registro no encontrado', 'danger')
-        return redirect(url_for('index'))
-    
-    return render_template('editar.html', dato=dato)
 
 @app.route('/eliminar/<int:id>', methods=['GET', 'POST'])
 def eliminar(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    if request.method == 'POST':
-        try:
-            cursor.execute('DELETE FROM datos_cientificos WHERE id = ?', (id,))
-            conn.commit()
-            flash('Registro eliminado correctamente', 'success')
-        except Exception as e:
-            flash(f'Error al eliminar registro: {str(e)}', 'danger')
-        finally:
-            conn.close()
+    try:
+        with get_db_connection() as conn:
+            if conn:
+                with conn.cursor() as cursor:
+                    if request.method == 'POST':
+                        cursor.execute('DELETE FROM datos_cientificos WHERE id = ?', (id,))
+                        conn.commit()
+                        flash('Registro eliminado correctamente', 'success')
+                        return redirect(url_for('index'))
+                    
+                    cursor.execute('SELECT * FROM datos_cientificos WHERE id = ?', (id,))
+                    dato = cursor.fetchone()
+                    if not dato:
+                        flash('Registro no encontrado', 'danger')
+                        return redirect(url_for('index'))
+                    
+                    return render_template('eliminar.html', dato=dato)
+    except Exception as e:
+        flash(f'Error al eliminar registro: {str(e)}', 'danger')
         return redirect(url_for('index'))
-    
-    cursor.execute('SELECT * FROM datos_cientificos WHERE id = ?', (id,))
-    dato = cursor.fetchone()
-    conn.close()
-    
-    if dato is None:
-        flash('Registro no encontrado', 'danger')
-        return redirect(url_for('index'))
-    
-    return render_template('eliminar.html', dato=dato)
 
 if __name__ == '__main__':
     init_db()
-    app.run()
+    app.run(host='0.0.0.0', port=8000)
