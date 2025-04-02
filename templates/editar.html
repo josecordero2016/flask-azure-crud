@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Editar Dato Científico</h2>
+    
+    <form method="POST" class="mt-4">
+        <div class="mb-3">
+            <label for="nombre" class="form-label">Nombre*</label>
+            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ dato.nombre }}" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="descripcion" class="form-label">Descripción</label>
+            <textarea class="form-control" id="descripcion" name="descripcion" rows="3">{{ dato.descripcion or '' }}</textarea>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col">
+                <label for="valor" class="form-label">Valor*</label>
+                <input type="number" step="any" class="form-control" id="valor" name="valor" value="{{ dato.valor }}" required>
+            </div>
+            <div class="col">
+                <label for="unidad" class="form-label">Unidad de Medida</label>
+                <input type="text" class="form-control" id="unidad" name="unidad" value="{{ dato.unidad or '' }}">
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Actualizar</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+{% endblock %}

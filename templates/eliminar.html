@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Confirmar Eliminación</h2>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ dato.nombre }}</h5>
+            <p class="card-text">{{ dato.descripcion or 'Sin descripción' }}</p>
+            <p class="card-text"><strong>Valor:</strong> {{ dato.valor }} {{ dato.unidad or '' }}</p>
+            <p class="card-text"><small class="text-muted">Registrado el {{ dato.fecha_registro.strftime('%Y-%m-%d %H:%M') }}</small></p>
+        </div>
+    </div>
+    
+    <form method="POST" class="mt-4">
+        <p class="text-danger">¿Estás seguro que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
+        <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+{% endblock %}
