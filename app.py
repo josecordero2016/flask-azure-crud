@@ -152,4 +152,8 @@ def eliminar(id):
 
 if __name__ == '__main__':
     init_db()
-    app.run(host='0.0.0.0', port=5000)
+    app.run()  # ← Elimina esta línea
+    
+    # Usa esto en su lugar:
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=8000)  # Azure usa el puerto 8000
