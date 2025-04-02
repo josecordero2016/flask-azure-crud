@@ -7,6 +7,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY')
+conn = None
 
 # Configuración de conexión a Azure SQL
 def get_db_connection():
