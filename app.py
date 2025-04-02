@@ -11,24 +11,26 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'crudazure')
 # Configuración mejorada de conexión a Azure SQL
 def get_db_connection():
     try:
-        server = os.getenv('AZURE_SQL_SERVER', 'sql-server-azure-prueba-nube.database.windows.net')
-        database = os.getenv('AZURE_SQL_DATABASE', 'sql-prueba-crud')
-        username = os.getenv('AZURE_SQL_USERNAME', 'adminpruebas')
-        password = os.getenv('AZURE_SQL_PASSWORD', 'Helado123')
+        server = "sql-server-azure-prueba-nube.database.windows.net"  # Sin tcp:
+        database = "sql-prueba-crud"
+        username = "adminpruebas"
+        password = "Helado123"
         
-        conn = pyodbc.connect(
-            f'DRIVER={{ODBC Driver 17 for SQL Server}};'
-            f'SERVER={server};'
-            f'DATABASE={database};'
-            f'UID={username};'
-            f'PWD={password};'
-            'Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'
+        conn_str = (
+            "Driver={ODBC Driver 17 for SQL Server};"
+            f"Server={server};"  # ¡Importante sin tcp:!
+            f"Database={database};"
+            f"Uid={username};"
+            f"Pwd={password};"
+            "Encrypt=yes;"
+            "TrustServerCertificate=no;"
+            "Connection Timeout=30;"
         )
-        return conn
+        return pyodbc.connect(conn_str)
     except pyodbc.Error as e:
-        print(f"Error de conexión a la base de datos: {str(e)}")
+        print(f"ERROR DE CONEXIÓN: {str(e)}")
         return None
-
+    
 # Función init_db corregida
 def init_db():
     conn = None
