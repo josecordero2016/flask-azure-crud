@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 import pyodbc
 import os
 from dotenv import load_dotenv
+from waitress import serve
 
 load_dotenv()
 
@@ -155,5 +156,4 @@ if __name__ == '__main__':
     app.run()  # ← Elimina esta línea
     
     # Usa esto en su lugar:
-    from waitress import serve
     serve(app, host="0.0.0.0", port=8000)  # Azure usa el puerto 8000
