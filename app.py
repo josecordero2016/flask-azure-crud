@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 import pyodbc
 import os
 from dotenv import load_dotenv
-from waitress import serve
 
 load_dotenv()
 
@@ -153,8 +152,4 @@ def eliminar(id):
 
 if __name__ == '__main__':
     init_db()
-   
-    
-    # Usa esto en su lugar:
-    serve(app, host="0.0.0.0", port=8001)  
-    # Azure usa el puerto 8000
+    app.run(host='0.0.0.0', port=8001)
