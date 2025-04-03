@@ -153,7 +153,8 @@ def eliminar(id):
 
 if __name__ == '__main__':
     init_db()
-    app.run()  # ← Elimina esta línea
+   
     
     # Usa esto en su lugar:
-    serve(app, host="0.0.0.0", port=8000)  # Azure usa el puerto 8000
+    serve(app, host="0.0.0.0", port=8000)  
+    # Azure usa el puerto 8000
