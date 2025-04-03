@@ -23,15 +23,18 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y unixodbc-dev g++ python3-dev  # Clave para pyodbc
+          sudo apt-get install -y unixodbc-dev g++ python3-dev
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Zip artifact (excluding venv)
-        run: zip -r release.zip . -x 'venv/*'
+      - name: Create runtime.txt
+        run: echo "python-3.11" > runtime.txt
+
+      - name: Zip artifact
+        run: zip -r release.zip . -x 'venv/*' '*.git*'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -52,8 +55,8 @@ jobs:
         with:
           name: python-app
 
-      - name: 'Delay before deployment (avoid SCM restart)'
-        run: sleep 120s  # Espera crítica para evitar conflictos
+      - name: 'Delay before deployment'
+        run: sleep 120s
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
@@ -62,4 +65,4 @@ jobs:
           app-name: 'CRUD'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_60C717F1C5584383B0EA13430B50A3BB }}
-          enable-oryx-build: true  # Fuerza compilación en Azure
+          startup-command: "gunicorn --bind=0.0.0.0:8000 app:app"
