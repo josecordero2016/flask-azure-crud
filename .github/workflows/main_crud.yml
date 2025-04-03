@@ -45,6 +45,9 @@ jobs:
       - name: Create runtime.txt
         run: echo "python-3.11" > runtime.txt
 
+      - name: Force pyodbc installation
+        run: pip install --force-reinstall pyodbc==4.0.39
+
       - name: Zip artifact
         run: zip -r release.zip . -x 'venv/*' '*.git*' '*.github/*' '.env*'
 
