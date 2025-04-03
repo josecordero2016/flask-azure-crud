@@ -22,31 +22,23 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          # Instala compiladores y herramientas esenciales
           sudo apt-get update
-          sudo apt-get install -y unixodbc-dev g++ python3-dev build-essential
-          
-          # Configura el repositorio de Microsoft para ODBC
+          sudo apt-get install -y unixodbc-dev g++ python3-dev
+          # Instalación segura del driver ODBC
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
-          
-          # Instala el driver ODBC
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
-          
-          # Verifica la instalación del driver
-          odbcinst -j
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt
+          # Verificación explícita
+          pip show pyodbc-binary || echo "¡pyodbc no está instalado!"
 
       - name: Create runtime.txt
         run: echo "python-3.11" > runtime.txt
-
-      - name: Force pyodbc installation
-        run: pip install --force-reinstall pyodbc==4.0.39
 
       - name: Zip artifact
         run: zip -r release.zip . -x 'venv/*' '*.git*' '*.github/*' '.env*'
