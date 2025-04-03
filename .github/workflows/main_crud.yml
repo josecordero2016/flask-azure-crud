@@ -1,7 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python app to Azure Web App - CRUD
 
 on:
@@ -10,72 +6,59 @@ on:
       - main
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
+env:
+  PYTHON_VERSION: '3.9' # Azure App Service actualmente soporta hasta 3.9
+  WEBAPP_PORT: 8001     # Puerto que usa tu aplicación
 
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+    
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-      
       - name: Install dependencies
-        run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install waitress gunicorn # Asegura instalación de servidores WSGI
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+      - name: Create startup.sh
+        run: |
+          cat > startup.sh << 'EOF'
+          #!/bin/bash
+          # Mata procesos previos
+          pkill -f "python.*app.py" || true
+          pkill -f gunicorn || true
+          sleep 3
+          
+          # Inicia la aplicación
+          cd /home/site/wwwroot
+          python -c "from waitress import serve; from app import app; serve(app, host='0.0.0.0', port=${{ env.WEBAPP_PORT }})"
+          EOF
+          chmod +x startup.sh
 
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-app
-          path: |
-            release.zip
-            !venv/
+      - name: Zip artifacts
+        run: |
+          zip -r deploy.zip . -x '*.git*' '*.env*' 'venv/*'
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_441AE361231347C987FE3DC5102EC1E0 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AE422666B5324B638913B2ACCBD00C5C }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_802AA5E279A946F2B1FD11D602C96CF3 }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
         with:
           app-name: 'CRUD'
           slot-name: 'Production'
-          
+          package: deploy.zip
+          app-settings: |
+            WEBSITES_PORT=${{ env.WEBAPP_PORT }}
+            SCM_DO_BUILD_DURING_DEPLOYMENT=true
