@@ -24,7 +24,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev g++ python3-dev
-          # Instala también el driver ODBC para SQL Server
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
           curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
@@ -39,9 +38,7 @@ jobs:
         run: echo "python-3.11" > runtime.txt
 
       - name: Zip artifact
-        run: |
-          # Excluye más carpetas innecesarias
-          zip -r release.zip . -x 'venv/*' '*.git*' '*.github/*' '.env' '*.env'
+        run: zip -r release.zip . -x 'venv/*' '*.git*' '*.github/*' '.env*'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -63,7 +60,7 @@ jobs:
           name: python-app
 
       - name: 'Delay before deployment'
-        run: sleep 150s  # Aumenté el tiempo de espera
+        run: sleep 10s
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
@@ -72,6 +69,4 @@ jobs:
           app-name: 'CRUD'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_60C717F1C5584383B0EA13430B50A3BB }}
-          startup-command: "gunicorn --bind=0.0.0.0:8000 app:app"
-          # Añade esta línea para mayor compatibilidad
-          enable-oryx-build: true
+          package: release.zip
