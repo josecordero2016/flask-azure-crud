@@ -22,12 +22,20 @@ jobs:
 
       - name: Install system dependencies
         run: |
+          # Instala compiladores y herramientas esenciales
           sudo apt-get update
-          sudo apt-get install -y unixodbc-dev g++ python3-dev
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get install -y unixodbc-dev g++ python3-dev build-essential
+          
+          # Configura el repositorio de Microsoft para ODBC
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/20.04/prod focal main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          
+          # Instala el driver ODBC
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
+          
+          # Verifica la instalación del driver
+          odbcinst -j
 
       - name: Install Python dependencies
         run: |
@@ -60,7 +68,7 @@ jobs:
           name: python-app
 
       - name: 'Delay before deployment'
-        run: sleep 10s
+        run: sleep 120s
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
